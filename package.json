@@ -45,6 +45,7 @@
 		"vscode-test": "^1.5.0"
 	},
 	"dependencies": {
+		"axios": "^0.21.1",
 		"markdown-it": "^12.0.6"
 	}
 }
