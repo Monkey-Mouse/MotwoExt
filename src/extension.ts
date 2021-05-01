@@ -2,12 +2,11 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import * as MarkdownIt from 'markdown-it';
-import { logAsync, loginAsync, saveCookie } from './api';
+import { logAsync, loginAsync, publishAsync, saveCookie } from './api';
 import { createHash } from 'crypto';
 import { readFileSync, readFile, writeFile } from 'fs';
 import * as path from 'path';
 import { dataPath, processAxiosErr } from './utils';
-
 
 let gmd: MarkdownIt;
 let hashTable: { [key: string]: string } = {};
@@ -60,8 +59,32 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 		}
+		await vscode.window.activeTextEditor?.document.save();
+		let text = vscode.window.activeTextEditor?.document.getText() as string;
+		if (!text) {
+			vscode.window.showErrorMessage('此命令只能对markdown文档使用！');
+			return;
+		}
+
+		text = text.trim();
+		let title = "默认标题";
+		const arr = text.match(/#(?:[^\r\n]|\r(?!\n))+/);
+		if (arr && arr?.length > 0) {
+			title = arr[0].substr(1).trim();
+			if (title.length === 0) {
+				title = "默认标题";
+			}
+			text = text.replace(arr[0], '');
+		}
+		console.log({ t: title, c: text });
 		// The code you place here will be executed every time your command is executed
-		gmd.render(vscode.window.activeTextEditor?.document.getText() as string, { upload: true });
+		const content = gmd.render(text, { upload: true });
+		const idarr = text.match(/<!-- mo2id:[a-zA-Z0-9 ]* -->/);
+		let id: string = '';
+		if (idarr && idarr.length > 0) {
+			id = idarr[0].split('mo2id:')[1].split('-->')[0].trim();
+		}
+		await publishAsync({ id: id ?? undefined, title: title, content: content });
 		// Display a message box to the user
 		vscode.window.showInformationMessage('Hello World from MotwoExt!');
 	});
@@ -71,6 +94,11 @@ export function activate(context: vscode.ExtensionContext) {
 		extendMarkdownIt(md: MarkdownIt) {
 			gmd = md;
 			const defaultRender = md.renderer.rules.image;
+			// const defaultHeadingRender = gmd.renderer.rules.html_block;
+			// gmd.renderer.rules.html_block = function (tokens, idx, options, env, self) {
+			// 	console.log(tokens);
+			// 	return defaultHeadingRender!(tokens, idx, options, env, self);
+			// };
 			gmd.renderer.rules.image = function (tokens, idx, options, env, self) {
 				var token = tokens[idx],
 					aIndex = token.attrIndex('src');
