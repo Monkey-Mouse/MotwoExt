@@ -43,7 +43,7 @@ async function vscLoginAsync() {
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-	let disposable = vscode.commands.registerCommand('motwoext.helloWorld', async () => {
+	let disposable = vscode.commands.registerCommand('motwoext.publish', async () => {
 		await vscode.window.withProgress({ cancellable: false, location: vscode.ProgressLocation.Notification, title: 'Publish article to mo2' },
 			async (p, t) => {
 				try {
@@ -116,11 +116,6 @@ export function activate(context: vscode.ExtensionContext) {
 		extendMarkdownIt(md: MarkdownIt) {
 			gmd = md;
 			const defaultRender = md.renderer.rules.image!;
-			// const defaultHeadingRender = gmd.renderer.rules.html_block;
-			// gmd.renderer.rules.html_block = function (tokens, idx, options, env, self) {
-			// 	console.log(tokens);
-			// 	return defaultHeadingRender!(tokens, idx, options, env, self);
-			// };
 			gmd.renderer.rules.image = function (tokens, idx, options, env, self) {
 				var token = tokens[idx],
 					aIndex = token.attrIndex('src');

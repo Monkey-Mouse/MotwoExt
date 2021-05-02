@@ -10,16 +10,29 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:motwoext.helloWorld"
+		"*"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
 			{
-				"command": "motwoext.helloWorld",
-				"title": "Hello World"
+				"command": "motwoext.publish",
+				"title": "Publish article to mo2",
+				"icon": {
+					"dark": "file-upload-outline.png",
+					"light": "file-upload-outline.svg"
+				}
 			}
 		],
+		"menus": {
+			"editor/title": [
+				{
+					"when": "resourceLangId == markdown",
+					"command": "motwoext.publish",
+					"group": "navigation"
+				}
+			]
+		},
 		"markdown.markdownItPlugins": true
 	},
 	"scripts": {
