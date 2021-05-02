@@ -6,11 +6,12 @@ import { logAsync, loginAsync, publishAsync, saveCookie } from './api';
 import { createHash } from 'crypto';
 import { readFileSync, readFile, writeFile } from 'fs';
 import * as path from 'path';
-import { dataPath, processAxiosErr } from './utils';
+import { dataPath, processAxiosErr, uploadImg } from './utils';
 
 let gmd: MarkdownIt;
 let hashTable: { [key: string]: string } = {};
 const dataFile = path.join(dataPath, 'mo2config.json');
+let ps: Promise<void>[] = [];
 
 readFile(dataFile, { flag: "a+" }, (err, data) => {
 	hashTable = JSON.parse(data.toString());
@@ -50,43 +51,54 @@ export function activate(context: vscode.ExtensionContext) {
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
 	let disposable = vscode.commands.registerCommand('motwoext.helloWorld', async () => {
-		let user = await logAsync();
-		if (user.name !== 'visitor') {
-			vscode.window.showInformationMessage('Welcome back, ' + user.name);
-		} else {
-			const log = await vscLoginAsync();
-			if (!log) {
+		try {
+			ps = [];
+			let user = await logAsync();
+			if (user.name !== 'visitor') {
+				vscode.window.showInformationMessage('Welcome back, ' + user.name);
+			} else {
+				const log = await vscLoginAsync();
+				if (!log) {
+					return;
+				}
+			}
+			await vscode.window.activeTextEditor?.document.save();
+			let text = vscode.window.activeTextEditor?.document.getText() as string;
+			if (!text) {
+				vscode.window.showErrorMessage('此命令只能对markdown文档使用！');
 				return;
 			}
-		}
-		await vscode.window.activeTextEditor?.document.save();
-		let text = vscode.window.activeTextEditor?.document.getText() as string;
-		if (!text) {
-			vscode.window.showErrorMessage('此命令只能对markdown文档使用！');
-			return;
-		}
 
-		text = text.trim();
-		let title = "默认标题";
-		const arr = text.match(/#(?:[^\r\n]|\r(?!\n))+/);
-		if (arr && arr?.length > 0) {
-			title = arr[0].substr(1).trim();
-			if (title.length === 0) {
-				title = "默认标题";
+			text = text.trim();
+			let title = "默认标题";
+			const arr = text.match(/#(?:[^\r\n]|\r(?!\n))+/);
+			if (arr && arr?.length > 0) {
+				title = arr[0].substr(1).trim();
+				if (title.length === 0) {
+					title = "默认标题";
+				}
+				text = text.replace(arr[0], '');
 			}
-			text = text.replace(arr[0], '');
+			console.log({ t: title, c: text });
+			// The code you place here will be executed every time your command is executed
+			let content = gmd.render(text, { upload: true });
+			const idarr = text.match(/<!-- mo2id:[a-zA-Z0-9 ]* -->/);
+			let id: string = '';
+			if (idarr && idarr.length > 0) {
+				id = idarr[0].split('mo2id:')[1].split('-->')[0].trim();
+			}
+			await Promise.all(ps);
+			content = content.replace(/~~~[a-zA-Z0-9]+~~~/g, (s) => {
+				console.log(s);
+				return hashTable[s.split('~')[0]];
+			});
+
+			await publishAsync({ id: id ?? undefined, title: title, content: content });
+			// Display a message box to the user
+			vscode.window.showInformationMessage('Hello World from MotwoExt!');
+		} catch (error) {
+			console.log(error);
 		}
-		console.log({ t: title, c: text });
-		// The code you place here will be executed every time your command is executed
-		const content = gmd.render(text, { upload: true });
-		const idarr = text.match(/<!-- mo2id:[a-zA-Z0-9 ]* -->/);
-		let id: string = '';
-		if (idarr && idarr.length > 0) {
-			id = idarr[0].split('mo2id:')[1].split('-->')[0].trim();
-		}
-		await publishAsync({ id: id ?? undefined, title: title, content: content });
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from MotwoExt!');
 	});
 
 	context.subscriptions.push(disposable);
@@ -106,11 +118,22 @@ export function activate(context: vscode.ExtensionContext) {
 					try {
 						const dir = path.dirname(vscode.window.activeTextEditor!.document.uri.fsPath);
 						const p = path.join(dir, token.attrs[aIndex][1]);
+						const fileName = path.basename(p);
 						const buff = readFileSync(p, {});
 						const hash = createHash('md5').update(buff).digest('hex');
-						hashTable[hash] = p;
-						console.log(hash);
-						token.attrs[aIndex][1] = hash;
+						if (hashTable[hash]) {
+							token.attrs[aIndex][1] = hashTable[hash];
+						} else {
+							token.attrs[aIndex][1] = '~~~' + hash + '~~~';
+							ps.push(uploadImg(buff, fileName).then((url) => {
+								hashTable[hash] = url;
+							}).catch((err) => {
+								console.log(err);
+								vscode.window.showWarningMessage(`上传图片"${fileName}"失败！`);
+								delete hashTable[hash];
+							}));
+						}
+
 					} catch (error) {
 						console.log(error);
 					}

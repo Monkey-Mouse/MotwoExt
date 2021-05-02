@@ -46,9 +46,10 @@ export const publishAsync = async (blog: { id?: string, content: string, title: 
         }
     });
 };
+export interface ImgToken {
+    token: string;
+    file_key: string;
+}
 export async function getUploadToken(fname: string) {
-    return (await ax.get<{
-        token: string;
-        file_key: string;
-    }>('/img/' + fname)).data;
+    return (await ax.get<ImgToken>('/img/' + fname)).data;
 }
