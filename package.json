@@ -3,6 +3,9 @@
 	"displayName": "MotwoExt",
 	"description": "official vscode extension used to publish markdown file to www.motwo.cn",
 	"version": "0.0.1",
+	"author": {"email": "chronos@motwo.cn", "name": "Chronostasys", "url": "https://www.motwo.cn"},
+	"license": "MIT",
+	"repository": {"url": "https://github.com/Monkey-Mouse/MotwoExt"},
 	"engines": {
 		"vscode": "^1.55.0"
 	},
