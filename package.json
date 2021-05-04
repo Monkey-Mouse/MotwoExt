@@ -6,6 +6,7 @@
 	"author": {"email": "chronos@motwo.cn", "name": "Chronostasys", "url": "https://www.motwo.cn"},
 	"license": "MIT",
 	"repository": {"url": "https://github.com/Monkey-Mouse/MotwoExt"},
+	"publisher": "Chronostasys",
 	"engines": {
 		"vscode": "^1.55.0"
 	},
