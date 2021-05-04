@@ -37,7 +37,18 @@ export const loginAsync = async (loginName: string, pass: string) => {
     return re.data;
 };
 export const publishAsync = async (blog: { id?: string, content: string, title: string }) => {
-    const d = (await ax.post<{ id: string }>('blogs/publish?draft=true', blog)).data;
+    let old: { id?: string, content?: string, title?: string } = {};
+    if (blog.id) {
+        try {
+            old = (await ax.get(`blogs/find/id?id=${blog.id}&draft=true`)).data;
+        } catch (error) {
+            old = (await ax.get(`blogs/find/id?id=${blog.id}&draft=false`)).data;
+        }
+    }
+    old.content = blog.content;
+    old.title = blog.title;
+
+    const d = (await ax.post<{ id: string }>('blogs/publish?draft=true', old)).data;
     vscode.env.openExternal(vscode.Uri.parse(`https://www.motwo.cn/article/${d.id}?draft=true`));
     vscode.window.activeTextEditor?.edit((e) => {
         const pos = new vscode.Position(vscode.window.activeTextEditor!.document.lineCount, 0);
